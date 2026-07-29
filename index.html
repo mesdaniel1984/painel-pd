@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel P&D — Grupo MF Paris</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:#c8cdd6; --surface:#e8eaee; --surface2:#d8dce4; --border:#9aa0ae;
+    --accent:#1a3faa; --accent2:#3730a3; --green:#166534; --yellow:#92400e;
+    --red:#991b1b; --purple:#6b21a8; --text:#060b18; --muted:#1f2937;
+    --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh}
+
+  /* LOGIN */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:360px;text-align:center}
+  .login-logo{width:52px;height:52px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 20px}
+  .login-title{font-size:18px;font-weight:700;margin-bottom:4px}
+  .login-sub{font-size:12px;color:var(--muted);margin-bottom:28px}
+  .login-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:13px;padding:10px 12px;border-radius:8px;outline:none;margin-bottom:12px;transition:border-color .15s}
+  .login-input:focus{border-color:var(--accent)}
+  .login-btn{width:100%;background:var(--accent);color:#fff;border:none;padding:11px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+  .login-btn:hover{opacity:.88}
+  .login-err{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+
+  /* HEADER */
+  .header{background:linear-gradient(135deg,#d0d4dc 0%,#c8cdd8 100%);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-left{display:flex;align-items:center;gap:14px}
+  .logo-dot{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
+  .header-title{font-size:15px;font-weight:700;color:#1e2435;letter-spacing:-.3px}
+  .header-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .header-meta{display:flex;gap:10px;align-items:center}
+  .badge-date{background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .user-badge{background:rgba(26,63,170,.1);border:1px solid rgba(26,63,170,.3);padding:4px 10px;border-radius:6px;font-size:11px;color:#1a3faa;font-weight:600}
+  .btn-logout{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:7px;cursor:pointer;font-family:var(--font);font-size:11px}
+  .btn-logout:hover{border-color:var(--red);color:var(--red)}
+  .btn-new{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;font-family:var(--font);transition:opacity .15s}
+  .btn-new:hover{opacity:.85}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;border-left:4px solid var(--accent)}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.err{border-left-color:var(--red)}
+
+  /* LOADING */
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .table-loading{text-align:center;padding:30px;color:var(--muted);font-size:12px}
+
+  /* ALERTS */
+  .alerts-bar{background:#f5e8e0;border-bottom:1px solid #e0c8b8;padding:8px 24px;display:flex;gap:12px;align-items:center;overflow-x:auto;flex-wrap:wrap}
+  .alert-chip{display:flex;align-items:center;gap:6px;background:#fee2e2;border:1px solid #fca5a5;padding:4px 10px;border-radius:20px;font-size:11px;white-space:nowrap;font-weight:600;color:#7f1d1d}
+  .alert-chip.warn{background:#fef3c7;border-color:#fcd34d;color:#78350f}
+  .alert-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .alerts-label{font-size:11px;color:var(--muted);white-space:nowrap;margin-right:4px;font-weight:600}
+
+  /* KPIs */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:20px 24px 0}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:border-color .2s}
+  .kpi-card:hover{border-color:var(--accent)}
+  .kpi-val{font-size:26px;font-weight:700;color:#1e2435;letter-spacing:-1px}
+  .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .kpi-sub{font-size:11px;margin-top:4px;font-weight:700}
+  .kpi-sub.ok{color:var(--green)} .kpi-sub.warn{color:var(--yellow)} .kpi-sub.danger{color:var(--red)}
+
+  /* TABS */
+  .tabs-wrap{padding:20px 24px 0;display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab-btn{background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:7px 7px 0 0;font-size:12px;font-weight:500;color:var(--muted);font-family:var(--font);display:flex;align-items:center;gap:6px;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;position:relative;bottom:-1px}
+  .tab-btn:hover{color:var(--text)}
+  .tab-btn.active{color:#1a3faa;border-bottom:2px solid #1a3faa;background:rgba(30,63,170,.08)}
+  .tab-count{background:var(--surface2);color:var(--muted);border-radius:10px;padding:1px 6px;font-size:10px}
+  .tab-btn.active .tab-count{background:rgba(30,63,170,.15);color:#1a3faa}
+
+  /* CONTENT */
+  .content{padding:20px 24px 40px}
+  .panel{display:none} .panel.active{display:block}
+
+  /* FILTER ROW */
+  .filter-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .search-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px 7px 32px;color:var(--text);font-family:var(--font);font-size:12px;flex:1;min-width:200px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center;outline:none;transition:border-color .15s}
+  .search-box:focus{border-color:var(--accent)}
+  .filter-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;padding:7px 10px;border-radius:8px;cursor:pointer;outline:none}
+
+  /* TABLE */
+  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse}
+  thead{background:var(--surface2)}
+  thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+  thead th:hover{color:var(--text)}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--surface2)}
+  tbody td{padding:9px 12px;font-size:13px;color:#060b18;vertical-align:middle}
+  .id-badge{font-family:var(--mono);font-size:10px;background:#1e3a8a;border:1px solid #3b82f6;padding:2px 7px;border-radius:4px;color:#fff;font-weight:700;white-space:nowrap}
+  .chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+  .chip-green{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+  .chip-yellow{background:#fef3c7;color:#78350f;border:1px solid #fcd34d}
+  .chip-red{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5}
+  .chip-blue{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd}
+  .chip-purple{background:#f3e8ff;color:#581c87;border:1px solid #d8b4fe}
+  .chip-gray{background:#e2e8f0;color:#1e293b;border:1px solid #94a3b8}
+  .economia{color:var(--green);font-weight:700;font-family:var(--mono);font-size:11px}
+  .date-cell{font-family:var(--mono);font-size:11px}
+  .date-cell.soon{color:var(--yellow);font-weight:600}
+  .date-cell.overdue{color:var(--red);font-weight:700}
+  .expiry-badge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700}
+  .expiry-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+  .expiry-warn{background:#fef3c7;color:#78350f;border:1px solid #fcd34d}
+  .expiry-danger{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5}
+  .row-actions{display:flex;gap:6px;opacity:0;transition:opacity .15s}
+  tbody tr:hover .row-actions{opacity:1}
+  .act-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:5px;font-family:var(--font);font-size:10px;cursor:pointer;transition:all .15s}
+  .act-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .act-btn.danger:hover{color:var(--red);border-color:var(--red)}
+  .add-row-btn{display:flex;align-items:center;gap:6px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;font-family:var(--font);font-size:12px;width:100%;padding:9px 14px;text-align:left;margin-top:2px;border-radius:0 0 10px 10px;transition:all .15s}
+  .add-row-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--accent)}
+
+  /* SECTION HEADER */
+  .section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .section-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .section-title{font-size:14px;font-weight:700;color:#1e2435}
+  .section-desc{font-size:11px;color:var(--muted);margin-top:1px}
+
+  /* STABILITY CARDS */
+  .stab-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .stab-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .stab-name{font-weight:600;font-size:13px;color:#1e2435}
+  .stab-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .prog-wrap{display:flex;align-items:center;gap:8px}
+  .prog-bar{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;min-width:60px}
+  .prog-fill{height:100%;border-radius:3px;background:var(--accent)}
+  .prog-label{font-size:10px;color:var(--muted);width:28px;text-align:right}
+
+  /* RADAR CARDS */
+  .radar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .radar-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border-color .2s}
+  .radar-card:hover{border-color:var(--accent2)}
+  .radar-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+  .radar-id{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .radar-name{font-size:13px;font-weight:600;color:#1e2435;margin:4px 0}
+  .radar-meta{font-size:11px;color:var(--muted)}
+  .radar-footer{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11px}
+  .radar-gargalo{color:var(--yellow);font-weight:600}
+  .prio-alta{color:#991b1b;font-weight:700;font-size:11px}
+  .prio-media{color:#92400e;font-weight:700;font-size:11px}
+  .prio-baixa{color:#166534;font-weight:700;font-size:11px}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:620px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:28px}
+  .modal-title{font-size:15px;font-weight:700;color:#1e2435;margin-bottom:20px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-group{display:flex;flex-direction:column;gap:5px}
+  .form-group.full{grid-column:1/-1}
+  label{font-size:11px;color:var(--muted);font-weight:600}
+  .form-input,.form-select,.form-textarea{background:#fff;border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;padding:8px 10px;border-radius:7px;outline:none;transition:border-color .15s}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+  .form-textarea{resize:vertical;min-height:70px}
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+  .btn-cancel{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:7px;font-family:var(--font);font-size:12px;cursor:pointer}
+  .btn-save{background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:7px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+  .empty-icon{font-size:32px;margin-bottom:10px}
+
+  @media(max-width:700px){
+    .kpi-row{grid-template-columns:repeat(2,1fr)}
+    .form-grid{grid-template-columns:1fr}
+    .tabs-wrap{gap:2px}
+    .tab-btn{padding:7px 10px;font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">P&D</div>
+    <div class="login-title">Painel de P&D</div>
+    <div class="login-sub">Grupo MF Paris · DMS Indústria de Alimentos</div>
+    <input class="login-input" type="email" id="login-email" placeholder="Email corporativo">
+    <input class="login-input" type="password" id="login-pass" placeholder="Senha" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrap" style="display:none">
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot">P&D</div>
+    <div>
+      <div class="header-title">Painel de P&D</div>
+      <div class="header-sub">Grupo MF Paris · DMS Indústria de Alimentos</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="badge-date" id="today-date"></div>
+    <div class="user-badge" id="user-badge">—</div>
+    <button class="btn-logout" onclick="doLogout()">Sair</button>
+    <button class="btn-new" onclick="openModal('pd_produtos_desenvolvimento')">+ Novo Projeto</button>
+  </div>
+</div>
+
+<div class="alerts-bar" id="alerts-bar">
+  <span class="alerts-label">⚠ Alertas:</span>
+  <span style="font-size:11px;color:var(--muted)" id="alerts-loading">Carregando...</span>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card"><div class="kpi-val" id="k0">—</div><div class="kpi-label">Produtos em Dev.</div><div class="kpi-sub warn" id="k0s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k1">—</div><div class="kpi-label">MPs em Homolog.</div><div class="kpi-sub warn" id="k1s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k2">—</div><div class="kpi-label">Fornecedores</div><div class="kpi-sub ok" id="k2s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k3">—</div><div class="kpi-label">Testes Estab.</div><div class="kpi-sub ok" id="k3s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k4">—</div><div class="kpi-label">Amostras</div><div class="kpi-sub" id="k4s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k5">—</div><div class="kpi-label">POPs / ITs</div><div class="kpi-sub warn" id="k5s">...</div></div>
+  <div class="kpi-card"><div class="kpi-val" id="k6">—</div><div class="kpi-label">Radar</div><div class="kpi-sub" id="k6s">...</div></div>
+</div>
+
+<div class="tabs-wrap">
+  <button class="tab-btn active" onclick="showTab(0,this)">📦 Prod. Desenvolvimento <span class="tab-count" id="tc0">—</span></button>
+  <button class="tab-btn" onclick="showTab(1,this)">🔧 Melhoria de Produtos <span class="tab-count" id="tc1">—</span></button>
+  <button class="tab-btn" onclick="showTab(2,this)">💰 Redução de Custos <span class="tab-count" id="tc2">—</span></button>
+  <button class="tab-btn" onclick="showTab(3,this)">🧪 MPs Homolog. <span class="tab-count" id="tc3">—</span></button>
+  <button class="tab-btn" onclick="showTab(4,this)">🏭 Fornecedores <span class="tab-count" id="tc4">—</span></button>
+  <button class="tab-btn" onclick="showTab(5,this)">⏱ Estabilidade <span class="tab-count" id="tc5">—</span></button>
+  <button class="tab-btn" onclick="showTab(6,this)">🎯 Radar <span class="tab-count" id="tc6">—</span></button>
+  <button class="tab-btn" onclick="showTab(7,this)">🧫 Amostras <span class="tab-count" id="tc7">—</span></button>
+  <button class="tab-btn" onclick="showTab(8,this)">📋 POPs/ITs <span class="tab-count" id="tc8">—</span></button>
+</div>
+
+<div class="content">
+
+<!-- PANEL 0 -->
+<div class="panel active" id="panel0">
+  <div class="section-header"><div class="section-icon" style="background:rgba(59,130,246,.15)">📦</div><div><div class="section-title">Produtos em Desenvolvimento</div><div class="section-desc">Projetos de novos produtos — etapas, prazos e responsáveis</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t0',this.value)"><select class="filter-select" onchange="filterCol('t0',6,this.value)"><option value="">Todos os status</option><option>Em andamento</option><option>Atrasado</option><option>Concluído</option><option>Pausado</option></select></div>
+  <div class="table-wrap"><table id="t0"><thead><tr><th>ID Projeto</th><th>Produto</th><th>Categoria</th><th>Etapa Atual</th><th>Lançamento Alvo</th><th>Responsável</th><th>Status</th><th>Prazo Interno</th><th>Ações</th></tr></thead><tbody><tr><td colspan="9" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_produtos_desenvolvimento')">+ Adicionar produto</button></div>
+</div>
+
+<!-- PANEL 1 -->
+<div class="panel" id="panel1">
+  <div class="section-header"><div class="section-icon" style="background:rgba(99,102,241,.15)">🔧</div><div><div class="section-title">Projetos de Melhoria de Produtos</div><div class="section-desc">Melhorias em formulação, legislação e performance</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t1',this.value)"></div>
+  <div class="table-wrap"><table id="t1"><thead><tr><th>Produto Atual</th><th>Motivo da Melhoria</th><th>O que Mudou?</th><th>Andamento</th><th>Prazo Conclusão</th><th>Responsável</th><th>Ações</th></tr></thead><tbody><tr><td colspan="7" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_melhoria_produtos')">+ Adicionar melhoria</button></div>
+</div>
+
+<!-- PANEL 2 -->
+<div class="panel" id="panel2">
+  <div class="section-header"><div class="section-icon" style="background:rgba(34,197,94,.15)">💰</div><div><div class="section-title">Projetos de Redução de Custos</div><div class="section-desc">Iniciativas de otimização — potencial de economia anual</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t2',this.value)"></div>
+  <div class="table-wrap"><table id="t2"><thead><tr><th>ID</th><th>Produto Impactado</th><th>Ação de Redução</th><th>Economia Anual</th><th>Status</th><th>Status Formulação</th><th>Ações</th></tr></thead><tbody><tr><td colspan="7" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_reducao_custos')">+ Adicionar projeto</button></div>
+</div>
+
+<!-- PANEL 3 -->
+<div class="panel" id="panel3">
+  <div class="section-header"><div class="section-icon" style="background:rgba(168,85,247,.15)">🧪</div><div><div class="section-title">Matérias-Primas em Homologação</div><div class="section-desc">Novos insumos em processo de qualificação</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t3',this.value)"></div>
+  <div class="table-wrap"><table id="t3"><thead><tr><th>Insumo/MP</th><th>Cód. Interno</th><th>Aplicação</th><th>Ficha Técnica/Laudo</th><th>Teste Piloto</th><th>Status P&amp;D</th><th>Ações</th></tr></thead><tbody><tr><td colspan="7" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_mps_homologacao')">+ Adicionar MP</button></div>
+</div>
+
+<!-- PANEL 4 -->
+<div class="panel" id="panel4">
+  <div class="section-header"><div class="section-icon" style="background:rgba(245,158,11,.15)">🏭</div><div><div class="section-title">Fornecedores em Homologação</div><div class="section-desc">Qualificação de novos fornecedores</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t4',this.value)"></div>
+  <div class="table-wrap"><table id="t4"><thead><tr><th>Insumo/MP</th><th>Fornecedor</th><th>Amostra</th><th>Aplicação</th><th>Auditoria</th><th>Documentação</th><th>Status</th><th>Prazo</th><th>Ações</th></tr></thead><tbody><tr><td colspan="9" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_fornecedores_homologacao')">+ Adicionar fornecedor</button></div>
+</div>
+
+<!-- PANEL 5 — ESTABILIDADE -->
+<div class="panel" id="panel5">
+  <div class="section-header"><div class="section-icon" style="background:rgba(59,130,246,.15)">⏱</div><div><div class="section-title">Testes de Estabilidade</div><div class="section-desc">Acompanhamento de shelf-life e análises programadas</div></div></div>
+  <div id="stab-list"><div class="table-loading">Carregando...</div></div>
+  <button class="add-row-btn" style="border-radius:10px;margin-top:8px" onclick="openModal('pd_estabilidade')">+ Adicionar teste de estabilidade</button>
+</div>
+
+<!-- PANEL 6 — RADAR -->
+<div class="panel" id="panel6">
+  <div class="section-header"><div class="section-icon" style="background:rgba(168,85,247,.15)">🎯</div><div><div class="section-title">Radar de Projetos</div><div class="section-desc">Briefings e ideias aguardando início</div></div></div>
+  <div class="filter-row"><select class="filter-select" onchange="renderRadar(this.value)"><option value="">Todas prioridades</option><option>Alta</option><option>Média</option><option>Baixa</option></select></div>
+  <div class="radar-grid" id="radar-grid"><div class="table-loading">Carregando...</div></div>
+  <button class="add-row-btn" style="border-radius:10px;margin-top:12px" onclick="openModal('pd_radar')">+ Adicionar briefing</button>
+</div>
+
+<!-- PANEL 7 — AMOSTRAS -->
+<div class="panel" id="panel7">
+  <div class="section-header"><div class="section-icon" style="background:rgba(239,68,68,.15)">🧫</div><div><div class="section-title">Amostras Disponíveis</div><div class="section-desc">Controle de quantidade, validade e descarte</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t7',this.value)"></div>
+  <div class="table-wrap"><table id="t7"><thead><tr><th>Tipo de Amostra</th><th>Identificação/Lote</th><th>Qtd. Recebida</th><th>Qtd. Disponível</th><th>Recebimento</th><th>Validade</th><th>Data Descarte</th><th>Situação</th><th>Localização</th><th>Ações</th></tr></thead><tbody><tr><td colspan="10" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_amostras')">+ Adicionar amostra</button></div>
+</div>
+
+<!-- PANEL 8 — POPs -->
+<div class="panel" id="panel8">
+  <div class="section-header"><div class="section-icon" style="background:rgba(34,197,94,.15)">📋</div><div><div class="section-title">Instruções de Trabalho / POPs</div><div class="section-desc">Documentos em elaboração ou revisão</div></div></div>
+  <div class="filter-row"><input class="search-box" placeholder="Buscar..." oninput="filterTable('t8',this.value)"></div>
+  <div class="table-wrap"><table id="t8"><thead><tr><th>Código</th><th>Nome do Procedimento</th><th>Tipo</th><th>Motivo</th><th>Elaborador</th><th>Revisor/Aprovador</th><th>Etapa Atual</th><th>Prazo</th><th>Ações</th></tr></thead><tbody><tr><td colspan="9" class="table-loading">Carregando...</td></tr></tbody></table><button class="add-row-btn" onclick="openModal('pd_pops_its')">+ Adicionar POP/IT</button></div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="main-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Novo Registro</div>
+    <div class="form-grid" id="modal-fields"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" id="btn-save" onclick="saveRecord()"><span id="save-label">Salvar</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONFIG — substitua pelos dados do seu projeto Supabase
+// ══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://vgwdujendpvegtcpxzgk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnd2R1amVuZHB2ZWd0Y3B4emdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNTI4NjEsImV4cCI6MjEwMDkyODg2MX0.pcyecEfTjHByuCeyDwMt4gyBDT4gOgq7-Z39yKHhCao';
+// ══════════════════════════════════════════════════
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── State ──
+let currentUser = null;
+let editingId = null;
+let currentTable = null;
+let allRadarData = [];
+
+// ── Date ──
+const today = new Date();
+document.getElementById('today-date').textContent =
+  today.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+// ── Toast ──
+function toast(msg, err=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (err ? ' err' : '');
+  setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ── Auth ──
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  document.getElementById('login-err').textContent = '';
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if (error) { document.getElementById('login-err').textContent = 'E-mail ou senha incorretos.'; return; }
+  initApp(data.user);
+}
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('app-wrap').style.display = 'none';
+  document.getElementById('login-wrap').style.display = 'flex';
+}
+async function checkSession() {
+  const {data:{session}} = await sb.auth.getSession();
+  if (session?.user) initApp(session.user);
+}
+function initApp(user) {
+  currentUser = user;
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'block';
+  const name = user.email.split('@')[0];
+  document.getElementById('user-badge').textContent = name;
+  loadAll();
+}
+
+// ── Tabs ──
+function showTab(idx, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel'+idx).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Filter ──
+function filterTable(tblId, q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#'+tblId+' tbody tr').forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+function filterCol(tblId, col, val) {
+  document.querySelectorAll('#'+tblId+' tbody tr').forEach(r => {
+    const c = r.cells[col];
+    r.style.display = !val || (c && c.textContent.toLowerCase().includes(val.toLowerCase())) ? '' : 'none';
+  });
+}
+
+// ── LOAD ALL ──
+async function loadAll() {
+  await Promise.all([
+    loadTable('pd_produtos_desenvolvimento','t0', renderProdutos),
+    loadTable('pd_melhoria_produtos','t1', renderMelhoria),
+    loadTable('pd_reducao_custos','t2', renderCustos),
+    loadTable('pd_mps_homologacao','t3', renderMPs),
+    loadTable('pd_fornecedores_homologacao','t4', renderFornecedores),
+    loadTable('pd_estabilidade',null, renderEstabilidade),
+    loadTable('pd_radar',null, renderRadarData),
+    loadTable('pd_amostras','t7', renderAmostras),
+    loadTable('pd_pops_its','t8', renderPops),
+  ]);
+  buildAlerts();
+}
+
+const dataStore = {};
+async function loadTable(tblName, tblId, renderFn) {
+  const {data, error} = await sb.from(tblName).select('*').order('created_at',{ascending:true});
+  if (error) { toast('Erro ao carregar '+tblName, true); return; }
+  dataStore[tblName] = data || [];
+  renderFn(data || []);
+  updateKPIs();
+}
+
+// ── RENDERERS ──
+function chipStatus(s) {
+  if (!s) return '<span class="chip chip-gray">—</span>';
+  const sl = s.toLowerCase();
+  if (sl.includes('concluíd') || sl.includes('aprovad') || sl.includes('homologad') || sl.includes('ok') || sl.includes('dentro')) return `<span class="chip chip-green">${s}</span>`;
+  if (sl.includes('atrasad') || sl.includes('retido') || sl.includes('pendente') || sl.includes('vence')) return `<span class="chip chip-red">${s}</span>`;
+  if (sl.includes('andamento') || sl.includes('testando') || sl.includes('validando') || sl.includes('análise') || sl.includes('analise')) return `<span class="chip chip-blue">${s}</span>`;
+  if (sl.includes('aguard') || sl.includes('agendad') || sl.includes('breve') || sl.includes('revisão')) return `<span class="chip chip-yellow">${s}</span>`;
+  return `<span class="chip chip-gray">${s}</span>`;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d+'T12:00:00');
+    return dt.toLocaleDateString('pt-BR');
+  } catch { return d; }
+}
+function actionBtns(id, tblName) {
+  return `<div class="row-actions">
+    <button class="act-btn" onclick="editRecord('${tblName}','${id}')">Editar</button>
+    <button class="act-btn danger" onclick="deleteRecord('${tblName}','${id}')">Excluir</button>
+  </div>`;
+}
+
+function renderProdutos(data) {
+  const tbody = document.querySelector('#t0 tbody');
+  document.getElementById('tc0').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><span class="id-badge">${r.projeto_id||'—'}</span></td>
+    <td><strong>${r.produto}</strong></td>
+    <td>${r.categoria||'—'}</td>
+    <td>${r.etapa_atual||'—'}</td>
+    <td><span class="date-cell">${fmtDate(r.lancamento_alvo)}</span></td>
+    <td>${r.responsavel||'—'}</td>
+    <td>${chipStatus(r.status)}</td>
+    <td><span class="date-cell">${fmtDate(r.prazo_interno)}</span></td>
+    <td>${actionBtns(r.id,'pd_produtos_desenvolvimento')}</td>
+  </tr>`).join('');
+}
+function renderMelhoria(data) {
+  const tbody = document.querySelector('#t1 tbody');
+  document.getElementById('tc1').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><strong>${r.produto_atual}</strong></td>
+    <td>${r.motivo||'—'}</td>
+    <td>${r.o_que_mudou||'—'}</td>
+    <td>${chipStatus(r.andamento)}</td>
+    <td><span class="date-cell">${fmtDate(r.prazo_conclusao)}</span></td>
+    <td>${r.responsavel||'—'}</td>
+    <td>${actionBtns(r.id,'pd_melhoria_produtos')}</td>
+  </tr>`).join('');
+}
+function renderCustos(data) {
+  const tbody = document.querySelector('#t2 tbody');
+  document.getElementById('tc2').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><span class="id-badge">${r.projeto_id||'—'}</span></td>
+    <td><strong>${r.produto_impactado}</strong></td>
+    <td>${r.acao_reducao||'—'}</td>
+    <td><span class="economia">${r.economia_anual||'—'}</span></td>
+    <td>${chipStatus(r.status)}</td>
+    <td>${chipStatus(r.status_formulacao)}</td>
+    <td>${actionBtns(r.id,'pd_reducao_custos')}</td>
+  </tr>`).join('');
+}
+function renderMPs(data) {
+  const tbody = document.querySelector('#t3 tbody');
+  document.getElementById('tc3').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><strong>${r.insumo_mp}</strong></td>
+    <td><span class="id-badge">${r.cod_interno||'—'}</span></td>
+    <td>${r.aplicacao||'—'}</td>
+    <td>${chipStatus(r.ficha_tecnica_laudo)}</td>
+    <td>${chipStatus(r.teste_piloto)}</td>
+    <td>${chipStatus(r.status_pd)}</td>
+    <td>${actionBtns(r.id,'pd_mps_homologacao')}</td>
+  </tr>`).join('');
+}
+function renderFornecedores(data) {
+  const tbody = document.querySelector('#t4 tbody');
+  document.getElementById('tc4').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><strong>${r.insumo_mp}</strong></td>
+    <td>${r.fornecedor||'—'}</td>
+    <td>${chipStatus(r.status_amostra)}</td>
+    <td>${r.aplicacao||'—'}</td>
+    <td>${chipStatus(r.auditoria_resultado)}</td>
+    <td>${chipStatus(r.documentacao)}</td>
+    <td>${chipStatus(r.status_geral)}</td>
+    <td><span class="date-cell">${fmtDate(r.prazo)}</span></td>
+    <td>${actionBtns(r.id,'pd_fornecedores_homologacao')}</td>
+  </tr>`).join('');
+}
+function renderEstabilidade(data) {
+  document.getElementById('tc5').textContent = data.length;
+  const container = document.getElementById('stab-list');
+  if (!data.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">⏱</div>Nenhum teste cadastrado</div>'; return; }
+  container.innerHTML = data.map(s => `
+    <div class="stab-card">
+      <div class="stab-header">
+        <div><div class="stab-name">${s.name}</div><div class="stab-sub">Lote: <strong>${s.lote||'—'}</strong> · ${s.tempo_total||'—'} · ${s.local_teste||'—'}</div></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="chip chip-blue">Em andamento</span>
+          <div class="row-actions" style="opacity:1">
+            <button class="act-btn" onclick="editRecord('pd_estabilidade','${s.id}')">Editar</button>
+            <button class="act-btn danger" onclick="deleteRecord('pd_estabilidade','${s.id}')">Excluir</button>
+          </div>
+        </div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-bar"><div class="prog-fill" style="width:${s.progresso||0}%"></div></div>
+        <span class="prog-label">${s.progresso||0}%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px">
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">INÍCIO</div><div style="font-family:var(--mono);font-size:11px">${s.start_date||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">PRÓXIMA ANÁLISE</div><div style="font-family:var(--mono);font-size:11px;color:var(--yellow)">${s.proxima_analise||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">PREVISÃO FINAL</div><div style="font-family:var(--mono);font-size:11px">${s.previsao_final||'—'}</div></div>
+      </div>
+    </div>`).join('');
+}
+function renderRadarData(data) {
+  allRadarData = data;
+  renderRadar('');
+}
+function prioBadge(p) {
+  if (!p) return 'chip-gray';
+  if (p.toLowerCase().includes('alta')) return 'chip-red';
+  if (p.toLowerCase().includes('méd') || p.toLowerCase().includes('med')) return 'chip-yellow';
+  return 'chip-green';
+}
+function renderRadar(filter='') {
+  const grid = document.getElementById('radar-grid');
+  document.getElementById('tc6').textContent = allRadarData.length;
+  const items = filter ? allRadarData.filter(r => r.prioridade === filter) : allRadarData;
+  if (!items.length) { grid.innerHTML = '<div class="empty"><div class="empty-icon">🎯</div>Nenhum briefing</div>'; return; }
+  grid.innerHTML = items.map(r => `
+    <div class="radar-card">
+      <div class="radar-top"><span class="radar-id">${r.briefing_id||'—'}</span><span class="chip ${prioBadge(r.prioridade)}">${r.prioridade||'—'}</span></div>
+      <div class="radar-name">${r.projeto}</div>
+      <div class="radar-meta">📌 ${r.origem||'—'}</div>
+      <div class="radar-footer">
+        <div style="margin-bottom:4px"><span style="color:var(--muted)">Impacto: </span>${r.impacto_comercial||'—'}</div>
+        <div style="margin-bottom:4px"><span style="color:var(--muted)">Início: </span><span style="font-family:var(--mono);font-size:10px">${r.previsao_inicio||'—'}</span></div>
+        <div class="radar-gargalo">⚠ ${r.gargalo||'—'}</div>
+        <div class="row-actions" style="opacity:1;margin-top:10px">
+          <button class="act-btn" onclick="editRecord('pd_radar','${r.id}')">Editar</button>
+          <button class="act-btn danger" onclick="deleteRecord('pd_radar','${r.id}')">Excluir</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function renderAmostras(data) {
+  const tbody = document.querySelector('#t7 tbody');
+  document.getElementById('tc7').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => {
+    const sit = (r.situacao||'').toLowerCase();
+    const badge = sit.includes('vence') || sit.includes('breve') ? 'expiry-warn' : sit.includes('vencid') ? 'expiry-danger' : 'expiry-ok';
+    return `<tr>
+      <td><strong>${r.tipo_amostra}</strong></td>
+      <td><span class="id-badge">${r.identificacao_lote||'—'}</span></td>
+      <td>${r.qtd_recebida||'—'}</td>
+      <td>${r.qtd_disponivel||'—'}</td>
+      <td><span class="date-cell">${fmtDate(r.data_recebimento)}</span></td>
+      <td><span class="date-cell">${fmtDate(r.validade)}</span></td>
+      <td><span class="date-cell">${fmtDate(r.data_descarte)}</span></td>
+      <td><span class="expiry-badge ${badge}">${r.situacao||'—'}</span></td>
+      <td>${r.localizacao||'—'}</td>
+      <td>${actionBtns(r.id,'pd_amostras')}</td>
+    </tr>`;
+  }).join('');
+}
+function renderPops(data) {
+  const tbody = document.querySelector('#t8 tbody');
+  document.getElementById('tc8').textContent = data.length;
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">Nenhum registro</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `<tr>
+    <td><span class="id-badge">${r.codigo||'—'}</span></td>
+    <td><strong>${r.nome_procedimento}</strong></td>
+    <td>${r.tipo?.includes('IT') ? '<span class="chip chip-purple">'+r.tipo+'</span>' : '<span class="chip chip-blue">'+(r.tipo||'—')+'</span>'}</td>
+    <td>${r.motivo||'—'}</td>
+    <td>${r.elaborador||'—'}</td>
+    <td>${r.revisor_aprovador||'—'}</td>
+    <td>${chipStatus(r.etapa_atual)}</td>
+    <td><span class="date-cell">${fmtDate(r.prazo)}</span></td>
+    <td>${actionBtns(r.id,'pd_pops_its')}</td>
+  </tr>`).join('');
+}
+
+// ── KPIs ──
+function updateKPIs() {
+  const pd = dataStore['pd_produtos_desenvolvimento']||[];
+  const mp = dataStore['pd_mps_homologacao']||[];
+  const forn = dataStore['pd_fornecedores_homologacao']||[];
+  const estab = dataStore['pd_estabilidade']||[];
+  const amostras = dataStore['pd_amostras']||[];
+  const pops = dataStore['pd_pops_its']||[];
+  const radar = dataStore['pd_radar']||[];
+
+  document.getElementById('k0').textContent = pd.length;
+  const atrasados = pd.filter(r => (r.status||'').toLowerCase().includes('atrasad')).length;
+  document.getElementById('k0s').textContent = atrasados ? `${atrasados} atrasado(s)` : 'Em dia';
+  document.getElementById('k0s').className = 'kpi-sub ' + (atrasados ? 'danger' : 'ok');
+
+  document.getElementById('k1').textContent = mp.length;
+  const retidos = mp.filter(r => (r.status_pd||'').toLowerCase().includes('retid')).length;
+  document.getElementById('k1s').textContent = retidos ? `${retidos} retido(s)` : 'Ok';
+  document.getElementById('k1s').className = 'kpi-sub ' + (retidos ? 'warn' : 'ok');
+
+  document.getElementById('k2').textContent = forn.length;
+  document.getElementById('k2s').textContent = 'Em análise';
+
+  document.getElementById('k3').textContent = estab.length;
+  document.getElementById('k3s').textContent = 'Em andamento';
+
+  document.getElementById('k4').textContent = amostras.length;
+  const venc = amostras.filter(r => (r.situacao||'').toLowerCase().includes('breve') || (r.situacao||'').toLowerCase().includes('vencid')).length;
+  document.getElementById('k4s').textContent = venc ? `${venc} vence(m) em breve` : 'Dentro da validade';
+  document.getElementById('k4s').className = 'kpi-sub ' + (venc ? 'danger' : 'ok');
+
+  document.getElementById('k5').textContent = pops.length;
+  document.getElementById('k5s').textContent = 'Em elaboração';
+
+  document.getElementById('k6').textContent = radar.length;
+  document.getElementById('k6s').textContent = 'Briefings';
+}
+
+// ── ALERTS ──
+function buildAlerts() {
+  const bar = document.getElementById('alerts-bar');
+  document.getElementById('alerts-loading').remove();
+  const alerts = [];
+  (dataStore['pd_mps_homologacao']||[]).filter(r => (r.status_pd||'').toLowerCase().includes('retid') || (r.ficha_tecnica_laudo||'').toLowerCase().includes('pendente')).forEach(r => alerts.push({text:`${r.insumo_mp} — Doc. pendente`,type:'danger'}));
+  (dataStore['pd_produtos_desenvolvimento']||[]).filter(r => (r.status||'').toLowerCase().includes('atrasad')).forEach(r => alerts.push({text:`${r.produto} — Atrasado`,type:'danger'}));
+  (dataStore['pd_amostras']||[]).filter(r => (r.situacao||'').toLowerCase().includes('breve') || (r.situacao||'').toLowerCase().includes('vencid')).forEach(r => alerts.push({text:`${r.tipo_amostra} — ${r.situacao}`,type:'warn'}));
+  (dataStore['pd_fornecedores_homologacao']||[]).filter(r => (r.documentacao||'').toLowerCase().includes('pendente')).forEach(r => alerts.push({text:`${r.fornecedor} — Doc. Técnica Pendente`,type:'warn'}));
+  (dataStore['pd_pops_its']||[]).filter(r => (r.etapa_atual||'').toLowerCase().includes('assinatura')).forEach(r => alerts.push({text:`${r.codigo} ${r.nome_procedimento} — Aguard. assinatura`,type:'warn'}));
+  if (!alerts.length) { bar.innerHTML += '<span style="font-size:11px;color:var(--green);font-weight:600">✓ Nenhum alerta crítico</span>'; return; }
+  alerts.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'alert-chip' + (a.type==='warn' ? ' warn' : '');
+    el.innerHTML = `<span class="alert-dot"></span>${a.text}`;
+    bar.appendChild(el);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// MODAL — SCHEMAS POR TABELA
+// ══════════════════════════════════════════════════
+const SCHEMAS = {
+  pd_produtos_desenvolvimento: {
+    title:'Produto em Desenvolvimento',
+    fields:[
+      {key:'projeto_id',label:'ID do Projeto',placeholder:'PD-001'},
+      {key:'produto',label:'Nome do Produto *',placeholder:'Ex: Suplemento Proteico'},
+      {key:'categoria',label:'Categoria',type:'select',opts:['Suplementos','Lácteos','Café','Outros']},
+      {key:'etapa_atual',label:'Etapa Atual',placeholder:'Ex: Buscando fornecedores'},
+      {key:'lancamento_alvo',label:'Lançamento Alvo',type:'date'},
+      {key:'responsavel',label:'Responsável',placeholder:'Nome do responsável'},
+      {key:'status',label:'Status',type:'select',opts:['Em andamento','Atrasado','Concluído','Pausado']},
+      {key:'prazo_interno',label:'Prazo Interno',type:'date'},
+    ]
+  },
+  pd_melhoria_produtos: {
+    title:'Melhoria de Produto',
+    fields:[
+      {key:'produto_atual',label:'Produto Atual *',full:true,placeholder:'Nome do produto'},
+      {key:'motivo',label:'Motivo da Melhoria',placeholder:'Ex: Nova legislação'},
+      {key:'o_que_mudou',label:'O que Mudou?',placeholder:'Ex: Retirada gordura vegetal'},
+      {key:'andamento',label:'Andamento',placeholder:'Ex: Testando formulação'},
+      {key:'prazo_conclusao',label:'Prazo Conclusão',type:'date'},
+      {key:'responsavel',label:'Responsável',placeholder:'Nome'},
+    ]
+  },
+  pd_reducao_custos: {
+    title:'Redução de Custos',
+    fields:[
+      {key:'projeto_id',label:'ID do Projeto',placeholder:'CST-04'},
+      {key:'produto_impactado',label:'Produto Impactado *',placeholder:'Nome do produto'},
+      {key:'acao_reducao',label:'Ação de Redução',full:true,placeholder:'Ex: Substituição Soro de Leite'},
+      {key:'economia_anual',label:'Economia Anual',placeholder:'R$ 120.000/ano'},
+      {key:'status',label:'Status',placeholder:'Ex: Sensorial aprovado'},
+      {key:'status_formulacao',label:'Status Formulação',type:'select',opts:['Em análise','Homologada','Reprovada','Pendente']},
+    ]
+  },
+  pd_mps_homologacao: {
+    title:'MP em Homologação',
+    fields:[
+      {key:'insumo_mp',label:'Insumo / MP *',placeholder:'Nome da matéria-prima'},
+      {key:'cod_interno',label:'Cód. Interno',placeholder:'MP-0000'},
+      {key:'aplicacao',label:'Aplicação',placeholder:'Ex: Suplemento Proteico'},
+      {key:'ficha_tecnica_laudo',label:'Ficha Técnica / Laudo',placeholder:'Ex: Aprovada'},
+      {key:'teste_piloto',label:'Teste Piloto',placeholder:'Ex: Realizado (Aprovado)'},
+      {key:'status_pd',label:'Status P&D',placeholder:'Ex: Aguardando Amostra'},
+    ]
+  },
+  pd_fornecedores_homologacao: {
+    title:'Fornecedor em Homologação',
+    fields:[
+      {key:'insumo_mp',label:'Insumo / MP *',placeholder:'Nome'},
+      {key:'fornecedor',label:'Fornecedor',placeholder:'Nome do fornecedor'},
+      {key:'status_amostra',label:'Status Amostra',placeholder:'Ex: Recebida'},
+      {key:'aplicacao',label:'Aplicação',placeholder:'Ex: Suplementos'},
+      {key:'auditoria_resultado',label:'Resultado Auditoria',placeholder:'Ex: Aprovado (9.5)'},
+      {key:'documentacao',label:'Documentação',placeholder:'Ex: Ficha OK'},
+      {key:'status_geral',label:'Status Geral',placeholder:'Ex: Análise Performance'},
+      {key:'prazo',label:'Prazo',type:'date'},
+    ]
+  },
+  pd_estabilidade: {
+    title:'Teste de Estabilidade',
+    fields:[
+      {key:'name',label:'Produto *',full:true,placeholder:'Nome do produto/protótipo'},
+      {key:'lote',label:'Lote / Protótipo',placeholder:'Ex: PROT-001'},
+      {key:'start_date',label:'Data Início',placeholder:'dd/mm/aaaa'},
+      {key:'tempo_total',label:'Tempo Total',placeholder:'Ex: 12 meses'},
+      {key:'proxima_analise',label:'Próxima Análise',placeholder:'Ex: 27/07/2026'},
+      {key:'local_teste',label:'Local',placeholder:'Interno / CQA (Externo)'},
+      {key:'previsao_final',label:'Previsão Final',placeholder:'dd/mm/aaaa'},
+      {key:'progresso',label:'Progresso (%)',placeholder:'0 a 100'},
+    ]
+  },
+  pd_radar: {
+    title:'Briefing no Radar',
+    fields:[
+      {key:'briefing_id',label:'ID Briefing',placeholder:'BRF-2026-00'},
+      {key:'projeto',label:'Projeto / Ideia *',placeholder:'Nome do projeto'},
+      {key:'origem',label:'Origem',placeholder:'Ex: Comercial / Marketing'},
+      {key:'prioridade',label:'Prioridade',type:'select',opts:['Alta','Média','Baixa']},
+      {key:'impacto_comercial',label:'Impacto Comercial',placeholder:'Ex: Novo nicho'},
+      {key:'previsao_inicio',label:'Previsão de Início',placeholder:'Ex: 01/08/2026'},
+      {key:'gargalo',label:'Gargalo Atual',full:true,placeholder:'Ex: Aguardando disponibilidade'},
+    ]
+  },
+  pd_amostras: {
+    title:'Amostra',
+    fields:[
+      {key:'tipo_amostra',label:'Tipo de Amostra *',placeholder:'Nome da amostra'},
+      {key:'identificacao_lote',label:'Identificação / Lote',placeholder:'Ex: Forn-9982'},
+      {key:'qtd_recebida',label:'Qtd. Recebida',placeholder:'Ex: 500 g'},
+      {key:'qtd_disponivel',label:'Qtd. Disponível',placeholder:'Ex: 320 g'},
+      {key:'data_recebimento',label:'Data Recebimento',type:'date'},
+      {key:'validade',label:'Validade',type:'date'},
+      {key:'data_descarte',label:'Data Descarte',type:'date'},
+      {key:'situacao',label:'Situação',type:'select',opts:['Dentro da validade','Vence em breve','Vencida','Em análise','Descartada']},
+      {key:'localizacao',label:'Localização',full:true,placeholder:'Ex: Lab P&D — Armário Insumos'},
+    ]
+  },
+  pd_pops_its: {
+    title:'POP / IT',
+    fields:[
+      {key:'codigo',label:'Código',placeholder:'POP-24 / IT-15'},
+      {key:'nome_procedimento',label:'Nome do Procedimento *',placeholder:'Descrição'},
+      {key:'tipo',label:'Tipo',type:'select',opts:['POP (Análise)','IT (Processo)','POP (Processo)','IT (Análise)']},
+      {key:'motivo',label:'Motivo',placeholder:'Ex: Novo produto'},
+      {key:'elaborador',label:'Elaborador',placeholder:'Nome'},
+      {key:'revisor_aprovador',label:'Revisor / Aprovador',placeholder:'Nome'},
+      {key:'etapa_atual',label:'Etapa Atual',placeholder:'Ex: Redação do documento'},
+      {key:'prazo',label:'Prazo',type:'date'},
+    ]
+  },
+};
+
+// ── Modal open ──
+function openModal(tblName, record=null) {
+  currentTable = tblName;
+  editingId = record ? record.id : null;
+  const schema = SCHEMAS[tblName];
+  document.getElementById('modal-title').textContent = (editingId ? 'Editar' : 'Novo') + ': ' + schema.title;
+  const grid = document.getElementById('modal-fields');
+  grid.innerHTML = schema.fields.map(f => {
+    const val = record ? (record[f.key] ?? '') : '';
+    const cls = 'form-group' + (f.full ? ' full' : '');
+    if (f.type === 'select') {
+      const opts = f.opts.map(o => `<option${o===val?' selected':''}>${o}</option>`).join('');
+      return `<div class="${cls}"><label>${f.label}</label><select class="form-select" data-key="${f.key}"><option value="">— selecione —</option>${opts}</select></div>`;
+    }
+    const type = f.type || 'text';
+    return `<div class="${cls}"><label>${f.label}</label><input class="form-input" type="${type}" data-key="${f.key}" value="${String(val).replace(/"/g,'&quot;')}" placeholder="${f.placeholder||''}"></div>`;
+  }).join('');
+  document.getElementById('save-label').textContent = 'Salvar';
+  document.getElementById('main-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('main-modal').classList.remove('open');
+  editingId = null; currentTable = null;
+}
+
+// ── Save ──
+async function saveRecord() {
+  const schema = SCHEMAS[currentTable];
+  const payload = {};
+  document.querySelectorAll('#modal-fields [data-key]').forEach(el => {
+    const v = el.value.trim();
+    if (v) payload[el.dataset.key] = v;
+  });
+  // validate required (name, produto, etc)
+  const req = schema.fields.find(f => f.label.includes('*'));
+  if (req && !payload[req.key]) { toast('Preencha o campo obrigatório: '+req.label.replace(' *',''), true); return; }
+
+  document.getElementById('save-label').innerHTML = '<span class="spinner"></span>';
+  let error;
+  if (editingId) {
+    ({error} = await sb.from(currentTable).update(payload).eq('id', editingId));
+  } else {
+    ({error} = await sb.from(currentTable).insert(payload));
+  }
+  if (error) { toast('Erro ao salvar: '+error.message, true); document.getElementById('save-label').textContent='Salvar'; return; }
+  toast(editingId ? 'Registro atualizado!' : 'Registro salvo!');
+  closeModal();
+  // reload só a tabela afetada
+  const renderers = {
+    pd_produtos_desenvolvimento: renderProdutos,
+    pd_melhoria_produtos: renderMelhoria,
+    pd_reducao_custos: renderCustos,
+    pd_mps_homologacao: renderMPs,
+    pd_fornecedores_homologacao: renderFornecedores,
+    pd_estabilidade: renderEstabilidade,
+    pd_radar: renderRadarData,
+    pd_amostras: renderAmostras,
+    pd_pops_its: renderPops,
+  };
+  await loadTable(currentTable, null, renderers[currentTable]);
+  buildAlerts();
+}
+
+// ── Edit ──
+async function editRecord(tblName, id) {
+  const record = (dataStore[tblName]||[]).find(r => r.id === id);
+  if (!record) { toast('Registro não encontrado', true); return; }
+  openModal(tblName, record);
+}
+
+// ── Delete ──
+async function deleteRecord(tblName, id) {
+  if (!confirm('Excluir este registro permanentemente?')) return;
+  const {error} = await sb.from(tblName).delete().eq('id', id);
+  if (error) { toast('Erro ao excluir: '+error.message, true); return; }
+  toast('Registro excluído.');
+  const renderers = {
+    pd_produtos_desenvolvimento: renderProdutos,
+    pd_melhoria_produtos: renderMelhoria,
+    pd_reducao_custos: renderCustos,
+    pd_mps_homologacao: renderMPs,
+    pd_fornecedores_homologacao: renderFornecedores,
+    pd_estabilidade: renderEstabilidade,
+    pd_radar: renderRadarData,
+    pd_amostras: renderAmostras,
+    pd_pops_its: renderPops,
+  };
+  await loadTable(tblName, null, renderers[tblName]);
+  buildAlerts();
+}
+
+// ── Close modal on overlay ──
+document.getElementById('main-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+// ── Init ──
+checkSession();
+</script>
+</body>
+</html>
