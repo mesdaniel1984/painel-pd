@@ -41,6 +41,7 @@
   .btn-logout:hover{border-color:var(--red);color:var(--red)}
   .btn-new{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;font-family:var(--font);transition:opacity .15s}
   .btn-new:hover{opacity:.85}
+  .central-link{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap}
 
   /* TOAST */
   .toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;border-left:4px solid var(--accent)}
@@ -170,6 +171,7 @@
   .empty-icon{font-size:32px;margin-bottom:10px}
 
   @media(max-width:700px){
+    .header,.header-meta{flex-wrap:wrap;gap:10px}
     .kpi-row{grid-template-columns:repeat(2,1fr)}
     .form-grid{grid-template-columns:1fr}
     .tabs-wrap{gap:2px}
@@ -204,6 +206,7 @@
     </div>
   </div>
   <div class="header-meta">
+    <a class="central-link" href="https://mesdaniel1984.github.io/gmf-formulador/">← Central de sistemas</a>
     <div class="badge-date" id="today-date"></div>
     <div class="user-badge" id="user-badge">—</div>
     <button class="btn-logout" onclick="doLogout()">Sair</button>
@@ -660,7 +663,7 @@ function updateKPIs() {
 // ── ALERTS ──
 function buildAlerts() {
   const bar = document.getElementById('alerts-bar');
-  document.getElementById('alerts-loading').remove();
+  bar.innerHTML = '<span class="alerts-label">⚠ Alertas:</span>';
   const alerts = [];
   (dataStore['pd_mps_homologacao']||[]).filter(r => (r.status_pd||'').toLowerCase().includes('retid') || (r.ficha_tecnica_laudo||'').toLowerCase().includes('pendente')).forEach(r => alerts.push({text:`${r.insumo_mp} — Doc. pendente`,type:'danger'}));
   (dataStore['pd_produtos_desenvolvimento']||[]).filter(r => (r.status||'').toLowerCase().includes('atrasad')).forEach(r => alerts.push({text:`${r.produto} — Atrasado`,type:'danger'}));
@@ -820,7 +823,8 @@ function closeModal() {
 
 // ── Save ──
 async function saveRecord() {
-  const schema = SCHEMAS[currentTable];
+  const savedTable = currentTable;
+  const schema = SCHEMAS[savedTable];
   const payload = {};
   document.querySelectorAll('#modal-fields [data-key]').forEach(el => {
     const v = el.value.trim();
@@ -852,7 +856,7 @@ async function saveRecord() {
     pd_amostras: renderAmostras,
     pd_pops_its: renderPops,
   };
-  await loadTable(currentTable, null, renderers[currentTable]);
+  await loadTable(savedTable, null, renderers[savedTable]);
   buildAlerts();
 }
 
